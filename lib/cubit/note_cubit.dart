@@ -1,43 +1,33 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
+import '../models/note_model.dart';
 
-// Model sederhana untuk Note
-class Note {
-  final String title;
-  final String content;
-  final bool isFinished;
+class NoteCubit extends Cubit<List<NoteModel>> {
+  final Box<NoteModel> box;
+  NoteCubit(this.box) : super(const []);
 
-  Note({
-    required this.title,
-    required this.content,
-    this.isFinished = false,
-  });
-
-  Note copyWith({String? title, String? content, bool? isFinished}) {
-    return Note(
-      title: title ?? this.title,
-      content: content ?? this.content,
-      isFinished: isFinished ?? this.isFinished,
-    );
-  }
-}
-
-// State berupa daftar note
-class NoteCubit extends Cubit<List<Note>> {
-  NoteCubit() : super([]);
-
-  void addNote(Note note) {
-    emit([...state, note]);
+  void load() {
+    emit(box.values.toList());
   }
 
-  void deleteNote(int index) {
-    final newList = List<Note>.from(state)..removeAt(index);
-    emit(newList);
+  void addNote(String title, String content) {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final note = NoteModel(id: id, title: title, content: content);
+    box.put(id, note);
+    load();
   }
 
-  void toggleFinished(int index) {
-    final note = state[index];
-    final updated = note.copyWith(isFinished: !note.isFinished);
-    final newList = List<Note>.from(state)..[index] = updated;
-    emit(newList);
+  void toggleFinished(String id) {
+    final note = box.get(id);
+    if (note != null) {
+      note.isFinished = !note.isFinished;
+      note.save();
+      load();
+    }
+  }
+
+  void deleteNote(String id) async {
+    await box.delete(id);
+    load();
   }
 }
